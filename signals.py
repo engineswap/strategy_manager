@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 
-# Note: we compute raw signals here; any clipping or z-scoring across the full universe
-# should happen after filtering to avoid lookahead or universe-change effects.
+# Note: we compute raw signals here; 
+# group dependent transformations (eg. z scoring) should happen after uni filtering 
 
 def _compute_ls_ratio(df: pd.DataFrame, signal_name, lookback) -> pd.DataFrame:
 	print("Computing long–short ratio signal...")
@@ -10,13 +10,9 @@ def _compute_ls_ratio(df: pd.DataFrame, signal_name, lookback) -> pd.DataFrame:
 	df[signal_name] = -df['ls_ratio_ewm']
 	return df
 
-def winsorize(x, lower_pct, upper_pct):
-	lo, hi = x.quantile(lower_pct), x.quantile(upper_pct)
-	return x.clip(lower=lo, upper=hi)
-
 def _compute_bolmom(df: pd.DataFrame, signal_name, lookback) -> pd.DataFrame:
 	print("Computing Bollinger Band momentum signal...")
-	df = df.sort_values(['datetime', 'symbol'])
+	# df = df.sort_values(['datetime', 'symbol'])
 
 	# compute daily returns and EWM volatility/bands
 	df['vol_ewm']   = df.groupby('symbol')['close'].transform(lambda x: x.ewm(span=lookback).std())
@@ -27,7 +23,7 @@ def _compute_bolmom(df: pd.DataFrame, signal_name, lookback) -> pd.DataFrame:
 	df[signal_name] = df['boll_dist'].clip(-1, 1)
 
 	# drop intermediates
-	return df.drop(columns=['daily_ret','vol_ewm','mid_band','boll_dist'])
+	return df.drop(columns=['vol_ewm','mid_band','boll_dist'])
 
 def _compute_fr_momo(df: pd.DataFrame, signal_name, lookback) -> pd.DataFrame:
 	print("Computing funding rate momentum signal...")
