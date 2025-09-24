@@ -25,14 +25,15 @@ def _compute_bolmom(df: pd.DataFrame, signal_name, lookback) -> pd.DataFrame:
 	# drop intermediates
 	return df.drop(columns=['vol_ewm','mid_band','boll_dist'])
 
-def _compute_fr_momo(df: pd.DataFrame, signal_name, lookback) -> pd.DataFrame:
+def _compute_carry(df: pd.DataFrame, signal_name, lookback) -> pd.DataFrame:
 	print("Computing funding rate momentum signal...")
-	# EWM carry and adjust by vol^2
-	df['carry']     = df.groupby('symbol')['fundingRate'].transform(lambda x: x.ewm(span=lookback, adjust=False).mean())
-	df['carry_adj'] = df['carry'] / (df['volatility'] ** 2)
+	# EWM carry and adjust by vol
+	df['carry_ewm'] = df.groupby('symbol')['fundingRate'].transform(lambda x: x.ewm(span=lookback, adjust=False).mean())
+
+	df['carry_adj'] = df['carry_ewm'] / (df['volatility'])
 
 	df[signal_name] = df['carry_adj']
-	return df.drop(columns=['carry','carry_adj'])
+	return df.drop(columns=['carry_ewm','carry_adj'])
 
 
 def _compute_buy_volume_ratio(df: pd.DataFrame, signal_name, lookback) -> pd.DataFrame:
@@ -44,6 +45,7 @@ def _compute_buy_volume_ratio(df: pd.DataFrame, signal_name, lookback) -> pd.Dat
 		lambda x: x.ewm(span=lookback).mean()
 	)
 	df[signal_name] = df['buy_volume_perp_slowed'] / df['total_volume_perp_slowed']
+
 	return df.drop(columns=['buy_volume_perp_slowed','total_volume_perp_slowed'])
 
 
@@ -57,10 +59,15 @@ def _compute_liquidation_imbalance(df: pd.DataFrame, signal_name, lookback) -> p
 	# imbalance = (long - short) / mcap; negative to buy short-liquidations, sell long-liquidations
 	df[signal_name] = -((df['long_liq_ewm'] - df['short_liq_ewm']) / df['mcap_ewm'])
 
+	# replace inf with nan
+	df[signal_name] = df[signal_name].replace([np.inf, -np.inf], np.nan)
+	
+
 	# drop intermediates
 	return df.drop(columns=['long_liq_ewm','short_liq_ewm','mcap_ewm'])
 
 def _compute_funding_volatility(df: pd.DataFrame, signal_name, lookback) -> pd.DataFrame:
 	print("Computing funding rate volatility signal...")
 	df[signal_name] = df.groupby('symbol')['fundingRate'].transform(lambda x: x.ewm(span=lookback, adjust=False).std())
+	
 	return df
