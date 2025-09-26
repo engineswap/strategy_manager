@@ -6,8 +6,12 @@ import numpy as np
 
 def _compute_ls_ratio(df: pd.DataFrame, signal_name, lookback) -> pd.DataFrame:
 	print("Computing long–short ratio signal...")
-	df['ls_ratio_ewm'] = df.groupby('symbol')['ls_ratio'].transform(lambda x: x.ewm(span=lookback, adjust=False).mean())
-	df[signal_name] = -df['ls_ratio_ewm']
+	df[signal_name] = df.groupby('symbol')['ls_ratio'].transform(lambda x: x.ewm(span=lookback, adjust=False).mean())
+	return df
+
+def _compute_longs_pct(df: pd.DataFrame, signal_name, lookback) -> pd.DataFrame:
+	print("Computing long percentage signal...")
+	df[signal_name] = df.groupby('symbol')['longs_pct'].transform(lambda x: x.ewm(span=lookback, adjust=False).mean())
 	return df
 
 def _compute_bolmom(df: pd.DataFrame, signal_name, lookback) -> pd.DataFrame:
@@ -70,4 +74,12 @@ def _compute_funding_volatility(df: pd.DataFrame, signal_name, lookback) -> pd.D
 	print("Computing funding rate volatility signal...")
 	df[signal_name] = df.groupby('symbol')['fundingRate'].transform(lambda x: x.ewm(span=lookback, adjust=False).std())
 	
+	return df
+
+def _compute_turnover(df: pd.DataFrame, signal_name, lookback) -> pd.DataFrame:
+	print("Computing turnover signal...")
+	df['oi_ewm']     = df.groupby('symbol')['oi'].transform(lambda x: x.ewm(span=lookback, adjust=False).mean())
+	df['volume_ewm'] = df.groupby('symbol')['total_volume_perp'].transform(lambda x: x.ewm(span=lookback, adjust=False).mean())
+	df[signal_name]  = np.log(df['volume_ewm'] / df['oi_ewm'])
+
 	return df
